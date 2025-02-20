@@ -6,6 +6,10 @@ add_llvm_target(OneCodeGen
 
     LINK_COMPONENTS
     Support
+    CodeGen
+    Target
+    TargetParser
+
     OneDesc
     OneInfo
 )
