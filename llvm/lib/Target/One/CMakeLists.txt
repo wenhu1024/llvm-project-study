@@ -1,17 +1,42 @@
 add_llvm_component_group(One)
 
-add_llvm_target(OneCodeGen
+set(LLVM_TARGET_DEFINITIONS One.td)
 
+tablegen(LLVM OneGenAsmWriter.inc -gen-asm-writer)
+tablegen(LLVM OneGenDAGISel.inc  -gen-dag-isel)
+tablegen(LLVM OneGenSubtargetInfo.inc -gen-subtarget)
+tablegen(LLVM OneGenInstrInfo.inc -gen-instr-info)
+tablegen(LLVM OneGenRegisterInfo.inc -gen-register-info)
+tablegen(LLVM OneGenCallingConv.inc -gen-callingconv)
+tablegen(LLVM OneGenMCPseudoLowering.inc -gen-pseudo-lowering)
+
+add_public_tablegen_target(OneCommonTableGen)
+
+add_llvm_target(OneCodeGen
     OneTargetMachine.cpp
+    OneInstrInfo.cpp
+    OneRegisterInfo.cpp
+    OneSubtarget.cpp
+    OneFrameLowering.cpp
+    OneISelLowering.cpp
+    OneISelDAGToDAG.cpp
+    OneAsmPrinter.cpp
 
     LINK_COMPONENTS
-    Support
+    AsmPrinter
     CodeGen
+    CodeGenTypes
+    Core
+    MC
+    SelectionDAG
+    OneDesc
+    OneInfo
+    Support
     Target
     TargetParser
 
-    OneDesc
-    OneInfo
+    ADD_TO_COMPONENT
+    One
 )
 
 add_subdirectory(TargetInfo)

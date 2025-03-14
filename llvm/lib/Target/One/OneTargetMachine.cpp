@@ -1,6 +1,8 @@
 #include "OneTargetMachine.h"
+#include "One.h"
 #include "TargetInfo/OneTargetInfo.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/MC/TargetRegistry.h"
 
 #define DEBUG_TYPE "one"
@@ -29,7 +31,37 @@ OneTargetMachine::OneTargetMachine(const Target &T, const Triple &TT,
                                    std::optional<Reloc::Model> RM,
                                    std::optional<CodeModel::Model> CM,
                                    CodeGenOptLevel OL, bool JIT)
-    : LLVMTargetMachine(T, computeDataLayout(TT, Options), TT, CPU, FS,
-                               Options, getEffectiveReloadModel(TT, RM),
-                               getEffectiveCodeModel(CM, CodeModel::Small), OL),
-      TLOF(std::make_unique<TargetLoweringObjectFileELF>()) {}
+    : LLVMTargetMachine(T, computeDataLayout(TT, Options), TT, CPU, FS, Options,
+                        getEffectiveReloadModel(TT, RM),
+                        getEffectiveCodeModel(CM, CodeModel::Small), OL),
+      TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
+      Subtarget(TT, CPU, FS, *this) {
+  initAsmInfo();
+}
+
+namespace {
+class OnePassConfig : public TargetPassConfig {
+public:
+  OnePassConfig(OneTargetMachine &TM, PassManagerBase &PM)
+      : TargetPassConfig(TM, PM) {}
+
+  OneTargetMachine &getOneTargetMachine() const {
+    return getTM<OneTargetMachine>();
+  }
+
+  const OneSubtarget &getOneSubtarget() const {
+    return *getOneTargetMachine().getSubtargetImpl();
+  }
+
+  bool addInstSelector() override;
+};
+} // namespace
+
+TargetPassConfig *OneTargetMachine::createPassConfig(PassManagerBase &PM) {
+  return new OnePassConfig(*this, PM);
+}
+
+bool OnePassConfig::addInstSelector() {
+  addPass(createOneISelDag(getOneTargetMachine()));
+  return false;
+}
