@@ -26,6 +26,8 @@ public:
                       const SmallVectorImpl<ISD::OutputArg> &Outs,
                       const SmallVectorImpl<SDValue> &OutVals, const SDLoc &DL,
                       SelectionDAG &DAG) const override;
+
+  const char* getTargetNodeName(unsigned Opcode) const override;
 };
 
 } // namespace llvm
