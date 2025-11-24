@@ -10,7 +10,7 @@ using namespace llvm;
 #include "OneGenAsmWriter.inc"
 
 void OneInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) {
-  OS << getRegisterName(Reg,One::ABIRegAltName);
+  OS << getRegisterName(Reg);
 }
 
 void OneInstPrinter::printInst(const MCInst *MI, uint64_t Address,
@@ -50,6 +50,9 @@ void OneInstPrinter::printImmediate(const MCInst *MI, unsigned opNum,
     llvm_unreachable("Unknown immediate kind");
 }
 
-const char *OneInstPrinter::getRegisterName(MCRegister Reg){
-    return getRegisterName(Reg,One::NoRegAltName);
+void OneInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O){
+  printOperand(MI, OpNo + 1 ,O);
+  O << "(";
+  printOperand(MI, OpNo ,O);
+  O << ")";
 }

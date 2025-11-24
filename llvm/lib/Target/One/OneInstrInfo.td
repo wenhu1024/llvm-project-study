@@ -2,18 +2,32 @@ include "OneInstrFormats.td"
 
 def retglue : SDNode<"OneISD::RET_GLUE", SDTNone, [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
-def ADDI : I<OPC_ADDI,
-            (outs GPR:$rd),
-            (ins GPR:$rs1, i32imm: $imm12),
+def imm12 : Operand<i32>, ImmLeaf<i32, [{ return isInt<12>(Imm);}]>;
+
+
+def mem : Operand<iPTR> {
+  let MIOperandInfo = (ops GPR, imm12);
+  let PrintMethod = "printMemOperand";
+}
+
+def memPat : ComplexPattern<iPTR, 2, "SelectAddrFI", [frameindex], [SDNPWantParent]>;
+
+def LOAD : OneInst<(outs GPR: $ra), (ins mem: $addr), "lw \t$ra, $addr", []>;
+def : Pat<(load memPat:$addr), (LOAD memPat:$addr)>;
+
+def STORE :OneInst<(outs), (ins GPR: $ra, mem: $addr), "sw \t$ra, $addr", []>;
+def : Pat<(store GPR:$ra, memPat:$addr), (STORE GPR:$ra, memPat:$addr)>;
+
+def ADDI : I<(outs GPR:$rd),
+            (ins GPR:$rs1, imm12: $imm12),
             "addi $rd, $rs1, $imm12",
             []>;
 
-def : Pat<(i32 (imm:$imm12)), (ADDI X0, imm:$imm12)>;
+def : Pat<(i32 (imm12:$imm12)), (ADDI ZERO, imm12:$imm12)>;
 
 let isCall = 1 in {
-  def JALR :  I<OPC_JALR,
-              (outs GPR:$rd),
-              (ins GPR:$rs1, i32imm:$imm12),
+  def JALR :  I<(outs GPR:$rd),
+              (ins GPR:$rs1, imm12:$imm12),
               "jalr $rd, $rs1, $imm12",
               []>;
 }
@@ -23,9 +37,9 @@ let isBarrier = 1, isReturn = 1, isTerminator = 1 in {
               (outs),
               (ins),
               [(retglue)]>,
-              PseudoInstExpansion<(JALR X0, X1, 0)>;
+              PseudoInstExpansion<(JALR ZERO, RA, 0)>;
 }
 
-def : InstAlias<"ret", (JALR X0, X1, 0)>;
-def : InstAlias<"li $rd, $imm",  (ADDI GPR:$rd, X0, i32imm:$imm)>;
+def : InstAlias<"ret", (JALR ZERO, RA, 0)>;
+def : InstAlias<"li $rd, $imm",  (ADDI GPR:$rd, ZERO, imm12:$imm)>;
 

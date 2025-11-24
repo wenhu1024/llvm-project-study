@@ -10,7 +10,7 @@ class OneFrameLowering : public TargetFrameLowering {
 
 public:
   explicit OneFrameLowering(const OneSubtarget &STI)
-      : TargetFrameLowering(TargetFrameLowering::StackGrowsDown, Align(4), 0,
+      : TargetFrameLowering(TargetFrameLowering::StackGrowsDown, Align(16), 0,
                             Align(4)),
         STI(STI){}
 
@@ -21,6 +21,9 @@ public:
 
 protected:
   bool hasFPImpl(const MachineFunction &MF) const override;
+
+private:
+  uint64_t computeStackSize(MachineFunction &MF) const;
 };
 } // namespace llvm
 

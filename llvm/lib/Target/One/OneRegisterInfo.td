@@ -1,19 +1,21 @@
-class OneReg<bits<5> Enc, string n, list<string> alt = []> : Register<n> {
-    let HWEncoding{4-0} = Enc;
+class OneReg<string n> : Register<n> {
     let Namespace = "One";
-    let AltNames = alt;
 }
 
-def ABIRegAltName : RegAltNameIndex;
+def ZERO  : OneReg<"zero">, DwarfRegNum<[0]>;
+def RA  : OneReg<"ra">, DwarfRegNum<[1]>;
+def SP  : OneReg<"sp">, DwarfRegNum<[2]>;
+def T0  : OneReg<"t0">, DwarfRegNum<[5]>;
+def T1  : OneReg<"t1">, DwarfRegNum<[6]>;
+def T2  : OneReg<"t2">, DwarfRegNum<[7]>;
+def S0  : OneReg<"s0">, DwarfRegNum<[8]>;
+def S1  : OneReg<"s1">, DwarfRegNum<[9]>;
+def A0  : OneReg<"a0">, DwarfRegNum<[10]>;
+def A1  : OneReg<"a1">, DwarfRegNum<[11]>;
 
-let RegAltNameIndices = [ABIRegAltName] in {
-    let isConstant = true in{
-        def X0 : OneReg<0,"x0",["zero"]>;
-    }
-    def X1  : OneReg<1,"x1",["ra"]>;
-    def X2  : OneReg<2,"x2",["sp"]>;
-    def X10 : OneReg<10,"x10",["a0"]>;
-    def X11 : OneReg<11,"x11",["a1"]>; 
-}
-
-def GPR : RegisterClass<"One", [i32], 32, (add X0,X1,X2,X10,X11)>;
+def GPR : RegisterClass<"One", [i32], 32, (add
+    ZERO, RA, SP,
+    A0, A1,
+    T0, T1, T2,
+    S0, S1
+)>;

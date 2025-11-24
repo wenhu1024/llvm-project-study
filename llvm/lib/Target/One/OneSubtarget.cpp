@@ -10,7 +10,7 @@ using namespace llvm;
 
 OneSubtarget::OneSubtarget(const Triple &TT, StringRef CPU, StringRef FS,
                            const TargetMachine &TM)
-    : OneGenSubtargetInfo(TT, CPU, CPU, FS), FrameLowering(*this),
+    : OneGenSubtargetInfo(TT, CPU, CPU, FS), Reginfo(*this), FrameLowering(*this),
       TLI(TM, *this) {}
 
 OneSubtarget &
