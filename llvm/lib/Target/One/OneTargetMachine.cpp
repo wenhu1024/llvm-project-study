@@ -11,6 +11,8 @@ using namespace llvm;
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeOneTarget() {
   RegisterTargetMachine<OneTargetMachine> X(getTheOneTarget());
+  PassRegistry &PR = *PassRegistry::getPassRegistry();
+  initializeOneDAGToDAGISelLegacyPass(PR);
 }
 
 static StringRef computeDataLayout(const Triple &TT,

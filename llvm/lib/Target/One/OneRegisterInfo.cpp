@@ -16,7 +16,11 @@ OneRegisterInfo::OneRegisterInfo(const OneSubtarget &STI) : OneGenRegisterInfo(O
 
 const MCPhysReg *
 OneRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  return CC_Save_SaveList;
+  return CSR_SaveList;
+}
+
+const uint32_t *OneRegisterInfo::getCallPreservedMask(const MachineFunction &MF, CallingConv::ID) const{
+  return CSR_RegMask;
 }
 
 BitVector OneRegisterInfo::getReservedRegs(const MachineFunction &MF) const {

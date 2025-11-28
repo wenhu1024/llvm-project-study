@@ -44,10 +44,20 @@ void OneFrameLowering::emitEpilogue(MachineFunction &MF,
     return;
 
   DebugLoc DL = MBBI != MBB.end() ? MBBI->getDebugLoc() : DebugLoc();
-  BuildMI(MBB, MBBI, DL, TII.get(One::ADDI),One::SP)
+  BuildMI(MBB, MBBI, DL, TII.get(One::ADDI), One::SP)
       .addReg(One::SP)
       .addImm(STACKSIZE)
       .setMIFlag(MachineInstr::FrameDestroy);
+}
+
+void OneFrameLowering::determineCalleeSaves(MachineFunction &MF,
+                                            BitVector &SavedRegs,
+                                            RegScavenger *RS) const {
+  TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
+
+  if (MF.getFrameInfo().hasCalls()) {
+    SavedRegs.set(One::RA);
+  }
 }
 
 bool OneFrameLowering::hasFPImpl(const MachineFunction &MF) const {

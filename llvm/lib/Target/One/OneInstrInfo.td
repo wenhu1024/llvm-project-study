@@ -12,16 +12,23 @@ def mem : Operand<iPTR> {
 
 def memPat : ComplexPattern<iPTR, 2, "SelectAddrFI", [frameindex], [SDNPWantParent]>;
 
-def LOAD : OneInst<(outs GPR: $ra), (ins mem: $addr), "lw \t$ra, $addr", []>;
-def : Pat<(load memPat:$addr), (LOAD memPat:$addr)>;
+def LOADFI : OneInst<(outs GPR: $ra), (ins mem: $addr), "lw \t$ra, $addr", [(set GPR :$ra, (load memPat:$addr))]>;
+def LOAD : OneInst<(outs GPR: $ra),(ins GPR: $rb), "lw \t$ra, 0($rb)",[(set GPR :$ra, (load GPR:$rb))]>;
+//def : Pat<(load memPat:$addr), (LOADFI memPat:$addr)>;
 
-def STORE :OneInst<(outs), (ins GPR: $ra, mem: $addr), "sw \t$ra, $addr", []>;
-def : Pat<(store GPR:$ra, memPat:$addr), (STORE GPR:$ra, memPat:$addr)>;
+def STOREFI : OneInst<(outs), (ins GPR: $ra, mem: $addr), "sw \t$ra, $addr", [(store GPR:$ra, memPat:$addr)]>;
+def STORE : OneInst<(outs), (ins GPR: $ra, GPR: $rb), "sw \t$ra, 0($rb)", [(store GPR:$ra, GPR:$rb)]>;
+//def : Pat<(store GPR:$ra, memPat:$addr), (STOREFI GPR:$ra, memPat:$addr)>;
 
 def ADDI : I<(outs GPR:$rd),
             (ins GPR:$rs1, imm12: $imm12),
             "addi $rd, $rs1, $imm12",
-            []>;
+            [(set GPR:$rd,(add GPR: $rs1, imm12: $imm12))]>;
+
+def ADD : I<(outs GPR:$rd),
+            (ins GPR:$rs1, GPR: $rs2),
+            "add $rd, $rs1, $rs2",
+            [(set GPR:$rd,(add GPR: $rs1, GPR: $rs2))]>;
 
 def : Pat<(i32 (imm12:$imm12)), (ADDI ZERO, imm12:$imm12)>;
 
@@ -40,6 +47,13 @@ let isBarrier = 1, isReturn = 1, isTerminator = 1 in {
               PseudoInstExpansion<(JALR ZERO, RA, 0)>;
 }
 
+def OneSDT_Call : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
+def one_call : SDNode<"OneISD::Call", OneSDT_Call, [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>; 
+
+def call_symbol : Operand<iPTR>;
+def CALL : I<(outs),(ins call_symbol:$rs1), "call\t $rs1", [(one_call tglobaladdr:$rs1)]>{
+  let isCall = 1;
+}
+
 def : InstAlias<"ret", (JALR ZERO, RA, 0)>;
 def : InstAlias<"li $rd, $imm",  (ADDI GPR:$rd, ZERO, imm12:$imm)>;
-

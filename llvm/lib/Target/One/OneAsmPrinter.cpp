@@ -44,6 +44,15 @@ void OneAsmPrinter::lowerToMCInst(const MachineInstr *MI, MCInst &Out) {
       MCOp = MCOperand::createImm(MO.getImm());
       break;
     }
+    case MachineOperand::MO_GlobalAddress: {
+      auto *symbol = getSymbol(MO.getGlobal());
+      const auto &expr = MCSymbolRefExpr::create(symbol,MCSymbolRefExpr::VK_None, OutContext);
+      MCOp = MCOperand::createExpr(expr);
+      break;
+    }
+    case MachineOperand::MO_RegisterMask: {
+      continue;
+    }
     default:
       llvm_unreachable("unknown operand type");
     }

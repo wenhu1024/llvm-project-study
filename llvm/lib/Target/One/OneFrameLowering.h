@@ -12,12 +12,14 @@ public:
   explicit OneFrameLowering(const OneSubtarget &STI)
       : TargetFrameLowering(TargetFrameLowering::StackGrowsDown, Align(16), 0,
                             Align(4)),
-        STI(STI){}
+        STI(STI) {}
 
   void emitPrologue(MachineFunction &MF, MachineBasicBlock &MBB) const override;
 
   void emitEpilogue(MachineFunction &MF, MachineBasicBlock &MBB) const override;
 
+  void determineCalleeSaves(MachineFunction &MF, BitVector &SavedRegs,
+                            RegScavenger *RS) const override;
 
 protected:
   bool hasFPImpl(const MachineFunction &MF) const override;
