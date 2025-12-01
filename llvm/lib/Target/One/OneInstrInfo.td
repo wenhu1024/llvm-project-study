@@ -20,15 +20,51 @@ def STOREFI : OneInst<(outs), (ins GPR: $ra, mem: $addr), "sw \t$ra, $addr", [(s
 def STORE : OneInst<(outs), (ins GPR: $ra, GPR: $rb), "sw \t$ra, 0($rb)", [(store GPR:$ra, GPR:$rb)]>;
 //def : Pat<(store GPR:$ra, memPat:$addr), (STOREFI GPR:$ra, memPat:$addr)>;
 
-def ADDI : I<(outs GPR:$rd),
-            (ins GPR:$rs1, imm12: $imm12),
-            "addi $rd, $rs1, $imm12",
-            [(set GPR:$rd,(add GPR: $rs1, imm12: $imm12))]>;
+class AtrithLogicalI<string inst, SDNode node> : I<
+  (outs GPR:$rd),
+  (ins GPR:$rs1, imm12:$imm12),
+  !strconcat(inst, "\t$rd, $rs1, $imm12"),
+  [(set GPR:$rd, (node GPR:$rs1, imm12:$imm12))]
+  >;
 
-def ADD : I<(outs GPR:$rd),
-            (ins GPR:$rs1, GPR: $rs2),
-            "add $rd, $rs1, $rs2",
-            [(set GPR:$rd,(add GPR: $rs1, GPR: $rs2))]>;
+def ADDI : AtrithLogicalI<"addi", add>;
+def ANDI : AtrithLogicalI<"andi", and>;
+def ORI  : AtrithLogicalI<"ori",  or>;
+def XORI : AtrithLogicalI<"xori", xor>;
+def SLLI : AtrithLogicalI<"slli", shl>;
+def SRLT : AtrithLogicalI<"srli", srl>;
+def SRAI : AtrithLogicalI<"srai", sra>;
+
+// def ADDI : I<(outs GPR:$rd),
+//             (ins GPR:$rs1, imm12: $imm12),
+//             "addi $rd, $rs1, $imm12",
+//             [(set GPR:$rd,(add GPR: $rs1, imm12: $imm12))]>;
+
+class AtrithLogicalR<string inst, SDNode node> : I<
+  (outs GPR:$rd),
+  (ins GPR:$rs1, GPR:$rs2),
+  !strconcat(inst, "\t$rd, $rs1, $rs2"),
+  [(set GPR:$rd, (node GPR:$rs1, GPR:$rs2))]
+  >;
+
+def ADD : AtrithLogicalR<"add", add>;
+def SUB : AtrithLogicalR<"sub", sub>; 
+def MUL : AtrithLogicalR<"mul", mul>;
+def DIV : AtrithLogicalR<"div", sdiv>;
+def REM : AtrithLogicalR<"rem", srem>;
+def AND : AtrithLogicalR<"and", and>;
+def OR  : AtrithLogicalR<"or",  or>;
+def XOR : AtrithLogicalR<"xor", xor>;
+def SLL : AtrithLogicalR<"sll", shl>;
+def SRL : AtrithLogicalR<"srl", srl>;
+def SRA : AtrithLogicalR<"sra", sra>;
+
+
+
+// def ADD : I<(outs GPR:$rd),
+//             (ins GPR:$rs1, GPR: $rs2),
+//             "add $rd, $rs1, $rs2",
+//             [(set GPR:$rd,(add GPR: $rs1, GPR: $rs2))]>;
 
 def : Pat<(i32 (imm12:$imm12)), (ADDI ZERO, imm12:$imm12)>;
 
