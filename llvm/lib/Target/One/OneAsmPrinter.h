@@ -27,6 +27,7 @@ public:
 private:
   bool lowerPseudoInstExpansion(const MachineInstr *MI, MCInst &Inst);
   void lowerToMCInst(const MachineInstr *MI,MCInst &Out);
+  MCOperand lowerSymbolOperand(const MachineOperand &MO) const;
 };
 } // namespace llvm
 

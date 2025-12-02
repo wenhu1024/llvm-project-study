@@ -1,7 +1,6 @@
 #include "OneAsmPrinter.h"
 
-#include "MCTargetDesc/OneMCTargetDesc.h"
-#include "TargetInfo/OneTargetInfo.h"
+#include "MCTargetDesc/OneMCExpr.h"
 #include "TargetInfo/OneTargetInfo.h"
 
 #include "llvm/MC/TargetRegistry.h"
@@ -19,7 +18,7 @@ bool OneAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
 }
 
 void OneAsmPrinter::emitInstruction(const MachineInstr *MI) {
-  if (MCInst OutInst; lowerPseudoInstExpansion(MI,OutInst)) {
+  if (MCInst OutInst; lowerPseudoInstExpansion(MI, OutInst)) {
     EmitToStreamer(*OutStreamer, OutInst);
     return;
   }
@@ -45,9 +44,7 @@ void OneAsmPrinter::lowerToMCInst(const MachineInstr *MI, MCInst &Out) {
       break;
     }
     case MachineOperand::MO_GlobalAddress: {
-      auto *symbol = getSymbol(MO.getGlobal());
-      const auto &expr = MCSymbolRefExpr::create(symbol,MCSymbolRefExpr::VK_None, OutContext);
-      MCOp = MCOperand::createExpr(expr);
+      MCOp = lowerSymbolOperand(MO);
       break;
     }
     case MachineOperand::MO_RegisterMask: {
@@ -58,6 +55,30 @@ void OneAsmPrinter::lowerToMCInst(const MachineInstr *MI, MCInst &Out) {
     }
     Out.addOperand(MCOp);
   }
+}
+
+MCOperand OneAsmPrinter::lowerSymbolOperand(const MachineOperand &MO) const {
+  // auto *symbol = getSymbol(MO.getGlobal());
+  // const auto &expr =
+  //     MCSymbolRefExpr::create(symbol, MCSymbolRefExpr::VK_None, OutContext);
+  // MCOp = MCOperand::createExpr(expr);
+  OneMCExpr::Kind kind = OneMCExpr::NONE;
+  const MCSymbol *symbol = nullptr;
+  switch (MO.getTargetFlags()) {
+    case OneMCExpr::HI:
+      kind = OneMCExpr::HI;
+      break;
+    case OneMCExpr::LO:
+      kind = OneMCExpr::LO;
+      break;
+    default:
+      break;
+  }
+
+  symbol = getSymbol(MO.getGlobal());
+  const MCExpr *Expr = MCSymbolRefExpr::create(symbol,OutContext);
+  Expr = new OneMCExpr(kind, Expr);
+  return MCOperand::createExpr(Expr);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeOneAsmPrinter() {
