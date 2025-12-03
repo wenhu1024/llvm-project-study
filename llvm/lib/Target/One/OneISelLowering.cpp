@@ -16,7 +16,7 @@ OneTargetLowering::OneTargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::i32, &One::GPRRegClass);
 
   setOperationAction(ISD::GlobalAddress,MVT::i32,Custom);
-
+  setOperationAction(ISD::BR_CC, MVT::i32, Expand);
   computeRegisterProperties(STI.getRegisterInfo());
 }
 

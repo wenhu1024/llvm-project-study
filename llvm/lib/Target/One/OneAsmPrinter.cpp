@@ -43,7 +43,9 @@ void OneAsmPrinter::lowerToMCInst(const MachineInstr *MI, MCInst &Out) {
       MCOp = MCOperand::createImm(MO.getImm());
       break;
     }
-    case MachineOperand::MO_GlobalAddress: {
+    case MachineOperand::MO_GlobalAddress: 
+    case MachineOperand::MO_MachineBasicBlock:
+    {
       MCOp = lowerSymbolOperand(MO);
       break;
     }
@@ -75,7 +77,11 @@ MCOperand OneAsmPrinter::lowerSymbolOperand(const MachineOperand &MO) const {
       break;
   }
 
-  symbol = getSymbol(MO.getGlobal());
+  if (MO.getType() == MachineOperand::MO_MachineBasicBlock) {
+    symbol = MO.getMBB()->getSymbol();
+  } else{
+    symbol = getSymbol(MO.getGlobal());
+  }
   const MCExpr *Expr = MCSymbolRefExpr::create(symbol,OutContext);
   Expr = new OneMCExpr(kind, Expr);
   return MCOperand::createExpr(Expr);
