@@ -49,7 +49,7 @@ bool OneDAGToDAGISel::SelectAddrFI(SDNode *Parent, SDValue AddrFI, SDValue &Base
 
   if(FrameIndexSDNode *FIN=dyn_cast<FrameIndexSDNode>(AddrFI)){
     Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), VT);
-    Offset = CurDAG->getConstant(0, DL, VT);
+    Offset = CurDAG->getTargetConstant(0, DL, VT);
     return true;
   }
   return false;
