@@ -52,6 +52,22 @@ bool OneDAGToDAGISel::SelectAddrFI(SDNode *Parent, SDValue AddrFI, SDValue &Base
     Offset = CurDAG->getTargetConstant(0, DL, VT);
     return true;
   }
+
+  if (CurDAG->isBaseWithConstantOffset(AddrFI)) {
+    EVT VT = AddrFI.getValueType();
+    ConstantSDNode *CN = dyn_cast<ConstantSDNode>(AddrFI.getOperand(1));
+
+    if (FrameIndexSDNode *FIN =
+            dyn_cast<FrameIndexSDNode>(AddrFI.getOperand(0))) {
+      Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), VT);
+    } else {
+      Base = AddrFI.getOperand(0);
+    }
+      Offset = CurDAG->getTargetConstant(CN->getZExtValue(), DL, VT);
+
+    return true;
+  }
+
   return false;
 }
 

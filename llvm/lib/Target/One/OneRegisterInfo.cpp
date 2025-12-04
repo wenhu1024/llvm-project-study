@@ -50,6 +50,7 @@ bool OneRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   uint64_t StackSize = ROUND_UP(MFI.getStackSize(), STI.getFrameLowering()->getStackAlignment());
   Offset += static_cast<int64_t>(StackSize);
 
+  Offset += MI.getOperand(i+1).getImm();  
   MI.getOperand(i).ChangeToRegister(One::SP, false);
   MI.getOperand(i+1).ChangeToImmediate(Offset);
   return true;

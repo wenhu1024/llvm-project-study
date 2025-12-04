@@ -195,14 +195,22 @@ SDValue OneTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
 SDValue OneTargetLowering::LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const{
   EVT VT = Op.getValueType();
   GlobalAddressSDNode *N = dyn_cast<GlobalAddressSDNode>(Op);
+
+  int64_t Offset = N->getOffset(); 
+
   SDLoc DL(N);
   SDValue Hi=DAG.getTargetGlobalAddress(N->getGlobal(), DL,VT,0,OneMCExpr::HI);
   SDValue Lo=DAG.getTargetGlobalAddress(N->getGlobal(), DL,VT,0,OneMCExpr::LO);
   
   SDValue HiNode = DAG.getNode(OneISD::HI, DL, VT, Hi);
   SDValue LoNode = DAG.getNode(OneISD::LO, DL, VT, Lo);
+  SDValue BaseAddr =DAG.getNode(ISD::ADD, DL, VT, HiNode, LoNode);
 
-  return DAG.getNode(ISD::ADD, DL, VT, HiNode, LoNode);
+  if(Offset){
+    return DAG.getNode(ISD::ADD, DL, VT, BaseAddr, DAG.getConstant(Offset, DL, VT));
+  }
+
+  return BaseAddr;
 }
 
 const char *OneTargetLowering::getTargetNodeName(unsigned Opcode) const {

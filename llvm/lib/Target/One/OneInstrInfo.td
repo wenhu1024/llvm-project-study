@@ -10,15 +10,30 @@ def mem : Operand<iPTR> {
   let PrintMethod = "printMemOperand";
 }
 
-def addrFI : ComplexPattern<iPTR, 2, "SelectAddrFI", [frameindex], [SDNPWantParent]>;
+def AddrFI : ComplexPattern<iPTR, 2, "SelectAddrFI", [frameindex], [SDNPWantParent]>;
 
-def LOADFI : OneInst<(outs GPR: $ra), (ins mem: $addr), "lw \t$ra, $addr", [(set GPR :$ra, (load addrFI:$addr))]>;
-def LOAD : OneInst<(outs GPR: $ra),(ins GPR: $rb), "lw \t$ra, 0($rb)",[(set GPR :$ra, (load GPR:$rb))]>;
-//def : Pat<(load addrFI:$addr), (LOADFI addrFI:$addr)>;
+multiclass STORE<PatFrag op, string asm> {
+	def FI : S<(outs), (ins GPR:$ra, mem:$addr), !strconcat(asm, "\t$ra, $addr"), [(op GPR:$ra, AddrFI:$addr)]>;
+	def R : S<(outs), (ins GPR:$ra, GPR:$rb), !strconcat(asm, "\t$ra, 0($rb)"), [(op GPR:$ra, GPR:$rb)]>;	
+}		
 
-def STOREFI : OneInst<(outs), (ins GPR: $ra, mem: $addr), "sw \t$ra, $addr", [(store GPR:$ra, addrFI:$addr)]>;
-def STORE : OneInst<(outs), (ins GPR: $ra, GPR: $rb), "sw \t$ra, 0($rb)", [(store GPR:$ra, GPR:$rb)]>;
-//def : Pat<(store GPR:$ra, addrFI:$addr), (STOREFI GPR:$ra, addrFI:$addr)>;
+multiclass LOAD<PatFrag op, string asm> {
+	def FI : S<(outs GPR:$ra), (ins mem:$addr), !strconcat(asm, "\t$ra, $addr"), [(set GPR:$ra, (op AddrFI:$addr))]>;
+	def R : S<(outs GPR:$ra), (ins GPR:$rb), !strconcat(asm, "\t$ra, 0($rb)"), [(set GPR:$ra, (op GPR:$rb))]>;
+}
+
+defm STOREW:STORE<store, "sw">;
+defm STOREH:STORE<truncstorei16, "sh">;
+defm STOREB:STORE<truncstorei8, "sb">;
+
+defm LOADW:LOAD<load, "lw">;
+defm LOADH:LOAD<extloadi16, "lh">;
+defm LOADSH:LOAD<sextloadi16, "lh">;
+defm LOADZH:LOAD<zextloadi16, "lh">;
+defm LOADB:LOAD<extloadi8, "lb">;
+defm LOADSB:LOAD<sextloadi8, "lb">;
+defm LOADZB:LOAD<zextloadi8, "lb">;
+
 
 class AtrithLogicalI<string inst, SDNode node> : I<
   (outs GPR:$rd),
@@ -128,3 +143,4 @@ def : Pat<(brcond (i32 (setgt GPR:$rs1, GPR:$rs2)),bb:$dst), (BLT GPR:$rs2, GPR:
 def : Pat<(brcond (i32 (seteq GPR:$rs1, GPR:$rs2)),bb:$dst), (BEQ GPR:$rs1, GPR:$rs2, brtarget:$dst)>;
 def : Pat<(brcond (i32 (setne GPR:$rs1, GPR:$rs2)),bb:$dst), (BNE GPR:$rs1, GPR:$rs2, brtarget:$dst)>;
 def : Pat<(br bb:$imm), (J brtarget:$imm)>;
+
