@@ -52,7 +52,7 @@ bool OneRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   MI.getOperand(i).ChangeToRegister(One::SP, false);
   MI.getOperand(i+1).ChangeToImmediate(Offset);
-  return false;
+  return true;
 }
 
 Register OneRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
