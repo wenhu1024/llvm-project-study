@@ -12,6 +12,11 @@ def mem : Operand<iPTR> {
 
 def AddrFI : ComplexPattern<iPTR, 2, "SelectAddrFI", [frameindex], [SDNPWantParent]>;
 
+def ptr : Operand<iPTR> {
+  let MIOperandInfo = (ops GPR, imm12);
+  let PrintMethod = "printPtrOperand";
+}
+
 multiclass STORE<PatFrag op, string asm> {
 	def FI : S<(outs), (ins GPR:$ra, mem:$addr), !strconcat(asm, "\t$ra, $addr"), [(op GPR:$ra, AddrFI:$addr)]>;
 	def R : S<(outs), (ins GPR:$ra, GPR:$rb), !strconcat(asm, "\t$ra, 0($rb)"), [(op GPR:$ra, GPR:$rb)]>;	
@@ -144,3 +149,4 @@ def : Pat<(brcond (i32 (seteq GPR:$rs1, GPR:$rs2)),bb:$dst), (BEQ GPR:$rs1, GPR:
 def : Pat<(brcond (i32 (setne GPR:$rs1, GPR:$rs2)),bb:$dst), (BNE GPR:$rs1, GPR:$rs2, brtarget:$dst)>;
 def : Pat<(br bb:$imm), (J brtarget:$imm)>;
 
+def : I<(outs GPR:$rd),(ins ptr:$p), "addi \t$rd, $p", [(set GPR:$rd, AddrFI:$p)]>;
