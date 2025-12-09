@@ -5,26 +5,26 @@ def retglue : SDNode<"OneISD::RET_GLUE", SDTNone, [SDNPHasChain, SDNPOptInGlue, 
 def imm12 : Operand<i32>, ImmLeaf<i32, [{ return isInt<12>(Imm);}]>;
 def imm20 : Operand<i32>, ImmLeaf<i32, [{ return isInt<20>(Imm);}]>;
 
-def mem : Operand<iPTR> {
-  let MIOperandInfo = (ops GPR, imm12);
-  let PrintMethod = "printMemOperand";
-}
+// def mem : Operand<iPTR> {
+//   let MIOperandInfo = (ops GPR, imm12);
+//   let PrintMethod = "printMemOperand";
+// }
 
 def AddrFI : ComplexPattern<iPTR, 2, "SelectAddrFI", [frameindex], [SDNPWantParent]>;
 
-def ptr : Operand<iPTR> {
-  let MIOperandInfo = (ops GPR, imm12);
-  let PrintMethod = "printPtrOperand";
-}
+// def ptr : Operand<iPTR> {
+//   let MIOperandInfo = (ops GPR, imm12);
+//   let PrintMethod = "printPtrOperand";
+// }
 
 multiclass STORE<PatFrag op, string asm> {
-	def FI : S<(outs), (ins GPR:$ra, mem:$addr), !strconcat(asm, "\t$ra, $addr"), [(op GPR:$ra, AddrFI:$addr)]>;
-	def R : S<(outs), (ins GPR:$ra, GPR:$rb), !strconcat(asm, "\t$ra, 0($rb)"), [(op GPR:$ra, GPR:$rb)]>;	
-}		
+	def FI : S<(outs), (ins GPR:$rd, GPR:$rs1, imm12:$imm12), !strconcat(asm, "\t$rd, $imm12($rs1)"), [(op GPR:$rd, (AddrFI GPR:$rs1, imm12:$imm12))]>;
+	def R : S<(outs), (ins GPR:$rd, GPR:$rs), !strconcat(asm, "\t$rd, 0($rs)"), [(op GPR:$rd, GPR:$rs)]>;	
+}
 
 multiclass LOAD<PatFrag op, string asm> {
-	def FI : S<(outs GPR:$ra), (ins mem:$addr), !strconcat(asm, "\t$ra, $addr"), [(set GPR:$ra, (op AddrFI:$addr))]>;
-	def R : S<(outs GPR:$ra), (ins GPR:$rb), !strconcat(asm, "\t$ra, 0($rb)"), [(set GPR:$ra, (op GPR:$rb))]>;
+	def FI : S<(outs GPR:$rd), (ins GPR: $rs1, imm12: $imm12), !strconcat(asm, "\t$rd, $imm12($rs1)"), [(set GPR:$rd, (op (AddrFI GPR:$rs1, imm12:$imm12)))]>;
+	def R : S<(outs GPR:$rd), (ins GPR:$rs), !strconcat(asm, "\t$rd, 0($rs)"), [(set GPR:$rd, (op GPR:$rs))]>;
 }
 
 defm STOREW:STORE<store, "sw">;
@@ -106,19 +106,19 @@ let isBarrier = 1, isReturn = 1, isTerminator = 1 in {
 def OneSDT_Call : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
 def one_call : SDNode<"OneISD::Call", OneSDT_Call, [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>; 
 
-def call_symbol : Operand<iPTR>;
-def CALL : I<(outs),(ins call_symbol:$rs1), "call\t $rs1", [(one_call tglobaladdr:$rs1)]>{
+// def call_symbol : Operand<iPTR>;
+def CALL : PseudoInst<(outs), (ins GPR:$rs1), [(one_call GPR:$rs1)]>, PseudoInstExpansion<(JALR RA, GPR:$rs1, 0)>{
   let isCall = 1;
 }
 
-def HI : SDNode<"OneISD::HI",SDTIntUnaryOp>;
-def LO : SDNode<"OneISD::LO",SDTIntUnaryOp>;
+// def HI : SDNode<"OneISD::HI",SDTIntUnaryOp>;
+// def LO : SDNode<"OneISD::LO",SDTIntUnaryOp>;
 
 
 def LUI : U<(outs GPR:$rd),(ins imm20:$imm),"lui \t$rd, $imm", []>;
 
-def : Pat<(HI tglobaladdr:$in),(LUI tglobaladdr:$in)>;
-def : Pat<(add GPR: $hi, (LO tglobaladdr: $lo)),(ADDI GPR: $hi, tglobaladdr: $lo)>;
+// def : Pat<(HI tglobaladdr:$in),(LUI tglobaladdr:$in)>;
+// def : Pat<(add GPR: $hi, (LO tglobaladdr: $lo)),(ADDI GPR: $hi, tglobaladdr: $lo)>;
 
 
 def : InstAlias<"ret", (JALR ZERO, RA, 0)>;
@@ -141,12 +141,18 @@ let isTerminator = 1 in {
     def BLT : B<(outs), (ins GPR: $rs1, GPR: $rs2, brtarget:$imm), "blt \t$rs1, $rs2, $imm", []>;
     def BEQ : B<(outs), (ins GPR: $rs1, GPR: $rs2, brtarget:$imm), "beq \t$rs1, $rs2, $imm", []>;
     def BNE : B<(outs), (ins GPR: $rs1, GPR: $rs2, brtarget:$imm), "bne \t$rs1, $rs2, $imm", []>;
+    def BGE : B<(outs), (ins GPR: $rs1, GPR: $rs2, brtarget:$imm), "bge \t$rs1, $rs2, $imm", []>;
 }
 
 def : Pat<(brcond (i32 (setlt GPR:$rs1, GPR:$rs2)),bb:$dst), (BLT GPR:$rs1, GPR:$rs2, brtarget:$dst)>;
 def : Pat<(brcond (i32 (setgt GPR:$rs1, GPR:$rs2)),bb:$dst), (BLT GPR:$rs2, GPR:$rs1, brtarget:$dst)>;
 def : Pat<(brcond (i32 (seteq GPR:$rs1, GPR:$rs2)),bb:$dst), (BEQ GPR:$rs1, GPR:$rs2, brtarget:$dst)>;
 def : Pat<(brcond (i32 (setne GPR:$rs1, GPR:$rs2)),bb:$dst), (BNE GPR:$rs1, GPR:$rs2, brtarget:$dst)>;
+def : Pat<(brcond (i32 (setge GPR:$rs1, GPR:$rs2)),bb:$dst), (BGE GPR:$rs1, GPR:$rs2, brtarget:$dst)>;
+def : Pat<(brcond (i32 (setle GPR:$rs1, GPR:$rs2)),bb:$dst), (BGE GPR:$rs2, GPR:$rs1, brtarget:$dst)>;
+
 def : Pat<(br bb:$imm), (J brtarget:$imm)>;
 
-def : I<(outs GPR:$rd),(ins ptr:$p), "addi \t$rd, $p", [(set GPR:$rd, AddrFI:$p)]>;
+// def : I<(outs GPR:$rd),(ins ptr:$p), "addi \t$rd, $p", [(set GPR:$rd, AddrFI:$p)]>;
+
+def : Pat<(AddrFI GPR:$rs1, imm12:$imm12),(ADDI GPR:$rs1, imm12:$imm12)>;

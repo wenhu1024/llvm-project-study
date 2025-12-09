@@ -24,6 +24,8 @@ public:
 
   void emitInstruction(const MachineInstr *MI) override;
 
+  bool lowerOperand(const MachineOperand &MO, MCOperand &MCO) const;
+
 private:
   bool lowerPseudoInstExpansion(const MachineInstr *MI, MCInst &Inst);
   void lowerToMCInst(const MachineInstr *MI,MCInst &Out);

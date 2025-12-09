@@ -87,6 +87,33 @@ MCOperand OneAsmPrinter::lowerSymbolOperand(const MachineOperand &MO) const {
   return MCOperand::createExpr(Expr);
 }
 
+bool OneAsmPrinter::lowerOperand(const MachineOperand &MO, MCOperand &MCOp) const{
+
+    switch (MO.getType()) {
+    case MachineOperand::MO_Register: {
+      MCOp = MCOperand::createReg(MO.getReg());
+      return true;
+    }
+    case MachineOperand::MO_Immediate: {
+      MCOp = MCOperand::createImm(MO.getImm());
+      return true;
+    }
+    case MachineOperand::MO_GlobalAddress: 
+    case MachineOperand::MO_MachineBasicBlock:
+    {
+      MCOp = lowerSymbolOperand(MO);
+      return true;
+    }
+    case MachineOperand::MO_RegisterMask: {
+      break;
+    }
+    default:
+      break;
+    }
+    MCOp = MCOperand();
+    return true;
+}
+
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeOneAsmPrinter() {
   RegisterAsmPrinter<OneAsmPrinter> X(getTheOneTarget());
 }
