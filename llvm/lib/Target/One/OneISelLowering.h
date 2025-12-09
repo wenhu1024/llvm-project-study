@@ -38,6 +38,8 @@ public:
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
 private:
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  
+  SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
 
   const char *getTargetNodeName(unsigned Opcode) const override;
 };

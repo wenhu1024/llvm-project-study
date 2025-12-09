@@ -32,29 +32,7 @@ void OneAsmPrinter::lowerToMCInst(const MachineInstr *MI, MCInst &Out) {
 
   for (const MachineOperand &MO : MI->operands()) {
     MCOperand MCOp;
-    switch (MO.getType()) {
-    case MachineOperand::MO_Register: {
-      if (MO.isImplicit())
-        continue;
-      MCOp = MCOperand::createReg(MO.getReg());
-      break;
-    }
-    case MachineOperand::MO_Immediate: {
-      MCOp = MCOperand::createImm(MO.getImm());
-      break;
-    }
-    case MachineOperand::MO_GlobalAddress: 
-    case MachineOperand::MO_MachineBasicBlock:
-    {
-      MCOp = lowerSymbolOperand(MO);
-      break;
-    }
-    case MachineOperand::MO_RegisterMask: {
-      continue;
-    }
-    default:
-      llvm_unreachable("unknown operand type");
-    }
+    lowerOperand(MO, MCOp);
     Out.addOperand(MCOp);
   }
 }
@@ -79,7 +57,10 @@ MCOperand OneAsmPrinter::lowerSymbolOperand(const MachineOperand &MO) const {
 
   if (MO.getType() == MachineOperand::MO_MachineBasicBlock) {
     symbol = MO.getMBB()->getSymbol();
-  } else{
+  } else if(MO.getType() == MachineOperand::MO_ExternalSymbol){
+    symbol = GetExternalSymbolSymbol(MO.getSymbolName());
+  }
+  else{
     symbol = getSymbol(MO.getGlobal());
   }
   const MCExpr *Expr = MCSymbolRefExpr::create(symbol,OutContext);
@@ -98,7 +79,8 @@ bool OneAsmPrinter::lowerOperand(const MachineOperand &MO, MCOperand &MCOp) cons
       MCOp = MCOperand::createImm(MO.getImm());
       return true;
     }
-    case MachineOperand::MO_GlobalAddress: 
+    case MachineOperand::MO_GlobalAddress:
+    case MachineOperand::MO_ExternalSymbol:
     case MachineOperand::MO_MachineBasicBlock:
     {
       MCOp = lowerSymbolOperand(MO);

@@ -4,7 +4,7 @@
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "MCTargetDesc/OneMCExpr.h"
-
+#include "OneCallingConv.h"
 
 using namespace llvm;
 #include "OneGenCallingConv.inc"
@@ -16,6 +16,7 @@ OneTargetLowering::OneTargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::i32, &One::GPRRegClass);
 
   setOperationAction(ISD::GlobalAddress,MVT::i32,Custom);
+  setOperationAction(ISD::Constant,MVT::i32,Custom);
   setOperationAction(ISD::BR_CC, MVT::i32, Expand);
   computeRegisterProperties(STI.getRegisterInfo());
 }
@@ -61,16 +62,21 @@ SDValue OneTargetLowering::LowerCall(CallLoweringInfo &CLI,
     }
   }
 
-  GlobalAddressSDNode *N = dyn_cast<GlobalAddressSDNode>(Callee);
-  MVT Ty = getPointerTy(DAG.getDataLayout());
-  // Callee = DAG.getTargetGlobalAddress(N->getGlobal(), DL,
-  //                                     getPointerTy(DAG.getDataLayout()));
+  if (GlobalAddressSDNode *N = dyn_cast<GlobalAddressSDNode>(Callee)) {
+    MVT Ty = getPointerTy(DAG.getDataLayout());
+    SDValue Hi = DAG.getTargetGlobalAddress(N->getGlobal(), DL, Ty, 0, OneMCExpr::HI);
+    SDValue Lo = DAG.getTargetGlobalAddress(N->getGlobal(), DL, Ty, 0, OneMCExpr::LO);
 
-  SDValue Hi = DAG.getTargetGlobalAddress(N->getGlobal(), DL, Ty, 0, OneMCExpr::HI);
-  SDValue Lo = DAG.getTargetGlobalAddress(N->getGlobal(), DL, Ty, 0, OneMCExpr::LO);
+    SDValue MHiNode = SDValue( DAG.getMachineNode(One::LUI, DL, Ty, Hi),0);
+    Callee = SDValue(DAG.getMachineNode(One::ADDI, DL, Ty, MHiNode, Lo),0);
+  }else if(ExternalSymbolSDNode *S = dyn_cast<ExternalSymbolSDNode>(Callee)){
+    MVT Ty = getPointerTy(DAG.getDataLayout());
+    SDValue Hi = DAG.getTargetExternalSymbol(S->getSymbol(), Ty, OneMCExpr::HI);
+    SDValue Lo = DAG.getTargetExternalSymbol(S->getSymbol(), Ty, OneMCExpr::LO);
 
-  SDValue MHiNode = SDValue( DAG.getMachineNode(One::LUI, DL, Ty, Hi),0);
-  Callee = SDValue(DAG.getMachineNode(One::ADDI, DL, Ty, MHiNode, Lo),0);
+    SDValue MHiNode = SDValue( DAG.getMachineNode(One::LUI, DL, Ty, Hi),0);
+    Callee = SDValue(DAG.getMachineNode(One::ADDI, DL, Ty, MHiNode, Lo),0);
+  }
 
   
   SmallVector<SDValue, 8> Ops(1, Chain);
@@ -194,6 +200,9 @@ SDValue OneTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::GlobalAddress: {
     return LowerGlobalAddress(Op, DAG);
   }
+  case ISD::Constant: {
+    return LowerConstant(Op, DAG);
+  }
   default:
     llvm_unreachable("unknown op");
   }
@@ -218,6 +227,32 @@ SDValue OneTargetLowering::LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) con
   }
 
   return BaseAddr;
+}
+
+#define RISCV_IMM_REACH (1LL << 12)
+#define RISCV_CONST_HIGH_PART(VALUE) (((VALUE) + (RISCV_IMM_REACH/2)) & ~(RISCV_IMM_REACH-1))
+#define RISCV_CONST_LOW_PART(VALUE) ((VALUE) - RISCV_CONST_HIGH_PART (VALUE))
+
+SDValue OneTargetLowering::LowerConstant(SDValue Op, SelectionDAG &DAG) const{
+  SDLoc DL(Op);
+  EVT VT = Op.getValueType();
+
+  int32_t Imm = dyn_cast<ConstantSDNode>(Op)->getSExtValue();
+
+  if (isInt<12>(Imm)) {
+    SDValue SDImm = DAG.getTargetConstant(Imm, DL, VT);
+    return SDValue(DAG.getMachineNode(One::ADDI, DL, VT,
+                             DAG.getRegister(One::ZERO, VT), SDImm),0);
+  }else{
+    uint32_t Hi = RISCV_CONST_HIGH_PART(Imm);
+    uint32_t Lo = RISCV_CONST_LOW_PART(Imm);
+    SDValue SDImmHi = DAG.getTargetConstant(Hi >> 12, DL, VT);
+    SDValue SDImmLo = DAG.getTargetConstant(Lo, DL, VT);
+    SDValue LuiOp = SDValue(DAG.getMachineNode(One::LUI, DL, VT,
+                                         SDImmHi),0);
+    return SDValue(DAG.getMachineNode(One::ADDI,DL,VT,LuiOp,SDImmLo),0);
+  }
+
 }
 
 const char *OneTargetLowering::getTargetNodeName(unsigned Opcode) const {
